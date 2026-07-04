@@ -1,12 +1,10 @@
-FROM python:3.9-slim-buster
+FROM python:3.10-slim
 
-RUN apt-get update && apt-get install -y git jq
+RUN apt-get update && apt-get install -y --no-install-recommends git jq && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
+
 COPY . .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Clone repositories and install requirements
-RUN bash run.sh
-
-# Start the application
-CMD python3 main.py
+CMD ["sh", "-c", "python main.py"]
