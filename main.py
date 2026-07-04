@@ -1,58 +1,65 @@
 import os
-import subprocess
-import json
 import time
-import flask
 import threading
+import json
 import requests
 
-app = flask.Flask(__name__)
+# Импорты для Telegram-бота
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
 
-@app.route('/')
+# Импорты для Flask
+from flask import Flask, render_template_string
+
+# ================== КОНФИГУРАЦИЯ ==================
+TOKEN = os.environ.get("TOKEN")  # или впиши сюда свой токен вручную
+if not TOKEN:
+    print("❌ Ошибка: токен не найден! Укажи его в переменной окружения TOKEN или в коде.")
+    exit(1)
+
+# ================== TELEGRAM БОТ ==================
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Привет! Я работаю!")
+
+def run_bot():
+    """Запускает Telegram-бота в отдельном потоке"""
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    print("🤖 Бот запущен и слушает команды...")
+    app.run_polling()
+
+# ================== FLASK (для keep-alive) ==================
+app_flask = Flask(__name__)
+
+@app_flask.route('/')
 def home():
-    return """
-<center>
-    <img src="https://i.giphy.com/media/3o7abAHdYvZdBNnGZq/giphy.webp" style="border-radius: 12px;"/>
-</center>
-<style>
-    body { background: antiquewhite; }
-</style>
-"""
+    # Простая страничка, чтобы Render видел, что приложение живо
+    html = '''
+    <center>
+        <h1>Бот работает!</h1>
+        <img src="https://i.giphy.com/media/3o7abAHdX5Yr4/320i.gif" />
+    </center>
+    '''
+    return html
 
-def ping_server():
-    while True:
-        try:
-            requests.get('http://0.0.0.0:10000')
-        except:
-            pass
-        time.sleep(120)
+@app_flask.route('/ping')
+def ping():
+    # Эндпоинт для cron-job.org
+    return "pong", 200
 
-def run_bots():
-    with open("config.json", "r") as jsonfile:
-        bots = json.load(jsonfile)
+def run_flask():
+    """Запускает Flask-сервер на порту 10000 (как требует Render)"""
+    port = int(os.environ.get("PORT", 10000))
+    app_flask.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 
-    bot_processes = []
-    for bot_name, bot_config in bots.items():
-        time.sleep(5)
-        bot_dir = f"/app/{bot_name}"
-        bot_file = os.path.join(bot_dir, bot_config['run'])
-
-        # Set environment variables for this bot
-        bot_env = os.environ.copy()
-        for env_name, env_value in bot_config['env'].items():
-            bot_env[env_name] = env_value
-
-        print(f'Starting {bot_name} bot with {bot_file}')
-        p = subprocess.Popen(['python3', bot_file], cwd=bot_dir, env=bot_env)
-        bot_processes.append(p)
-
-    for p in bot_processes:
-        p.wait()
-
-if __name__ == '__main__':
-    # Start ping server in a separate thread
-    threading.Thread(target=ping_server, daemon=True).start()
-    # Start bots in a separate thread
-    threading.Thread(target=run_bots, daemon=True).start()
-    # Run Flask app
-    app.run(host='0.0.0.0', port=10000)
+# ================== ЗАПУСК ВСЕГО ==================
+if __name__ == "__main__":
+    # Запускаем бота в отдельном потоке, чтобы Flask не блокировал
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+    
+    # Запускаем Flask в основном потоке
+    run_flask()
+flask
+python-telegram-bot
+requests
