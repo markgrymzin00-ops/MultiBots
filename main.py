@@ -1,65 +1,43 @@
 import os
-import time
 import threading
-import json
-import requests
+import time
 
-# Импорты для Telegram-бота
+from flask import Flask
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-# Импорты для Flask
-from flask import Flask, render_template_string
-
-# ================== КОНФИГУРАЦИЯ ==================
-TOKEN = os.environ.get("TOKEN")  # или впиши сюда свой токен вручную
+TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
-    print("❌ Ошибка: токен не найден! Укажи его в переменной окружения TOKEN или в коде.")
+    print("❌ Токен не найден. Добавь переменную окружения TOKEN.")
     exit(1)
 
-# ================== TELEGRAM БОТ ==================
+# ==================== TELEGRAM BOT ====================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Я работаю!")
+    await update.message.reply_text("✅ Бот работает!")
 
 def run_bot():
-    """Запускает Telegram-бота в отдельном потоке"""
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    print("🤖 Бот запущен и слушает команды...")
+    print("🤖 Бот запущен...")
     app.run_polling()
 
-# ================== FLASK (для keep-alive) ==================
-app_flask = Flask(__name__)
+# ==================== FLASK ====================
+flask_app = Flask(__name__)
 
-@app_flask.route('/')
+@flask_app.route('/')
 def home():
-    # Простая страничка, чтобы Render видел, что приложение живо
-    html = '''
-    <center>
-        <h1>Бот работает!</h1>
-        <img src="https://i.giphy.com/media/3o7abAHdX5Yr4/320i.gif" />
-    </center>
-    '''
-    return html
+    return "Бот работает!"
 
-@app_flask.route('/ping')
+@flask_app.route('/ping')
 def ping():
-    # Эндпоинт для cron-job.org
     return "pong", 200
 
 def run_flask():
-    """Запускает Flask-сервер на порту 10000 (как требует Render)"""
     port = int(os.environ.get("PORT", 10000))
-    app_flask.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+    flask_app.run(host="0.0.0.0", port=port)
 
-# ================== ЗАПУСК ВСЕГО ==================
+# ==================== ЗАПУСК ====================
 if __name__ == "__main__":
-    # Запускаем бота в отдельном потоке, чтобы Flask не блокировал
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
-    
-    # Запускаем Flask в основном потоке
     run_flask()
-flask
-python-telegram-bot
-requests
